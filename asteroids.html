@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Stardance — Asteroids</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<nav>
+  <a class="logo" href="index.html">✦ Henry's Stardance Project</a>
+  <div class="links">
+    <a href="index.html">Home</a>
+    <a href="launches.html">Launches</a>
+    <a href="asteroids.html">Asteroids</a>
+    <a href="image.html">Image of the Day</a>
+  </div>
+</nav>
+
+<main>
+  <section>
+    <h2>☄️ Near-Earth asteroids</h2>
+    <p class="sub">Asteroids passing near Earth, from NASA's NeoWs API. Pick a date to explore.</p>
+    <div class="keybar">
+      <input type="date" id="astDate">
+      <button id="astGo">Load</button>
+    </div>
+    <div id="astSummary"></div>
+    <div class="panel" id="chartPanel" style="display:none; margin-bottom:18px;">
+      <strong style="font-size:14px;">Asteroid sizes (average diameter, m)</strong>
+      <div class="chartwrap"><canvas id="astChart" role="img" aria-label="Bar chart of asteroid diameters"></canvas></div>
+    </div>
+    <div id="asteroidArea"><p class="loading">Loading asteroid data…</p></div>
+  </section>
+</main>
+
+<footer>Built for the Stardance challenge · Data: NASA NeoWs</footer>
+
+<script src="stars.js"></script>
+<script src="app.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<script>
+let astChart = null;
+
+function num(n){ return Number(n).toLocaleString(undefined, { maximumFractionDigits: 0 }); }
+
+async function loadAsteroids(date){
+  const area = document.getElementById("asteroidArea");
+  const summary = document.getElementById("astSummary");
+  const chartPanel = document.getElementById("chartPanel");
+  area.innerHTML = `<p class="loading">Loading asteroid data…</p>`;
+  summary.innerHTML = ""; chartPanel.style.display = "none";
+
+  try{
+    const res = await fetch(`https://api.nasa.gov/neo/rest/v1/feed?start_date=${date}&end_date=${date}&api_key=${getApiKey()}`);
+    const data = await res.json();
+    const list = (data.near_earth_objects && data.near_earth_objects[date]) || [];
+
+    if (list.length === 0){
+      area.innerHTML = `<div class="panel"><p class="loading">No asteroid data for ${date}.</p></div>`;
+      return;
+    }
+
+    // sort closest approach first
+    list.sort((a,b) =>
+      a.close_approach_data[0].miss_distance.kilometers - b.close_approach_data[0].miss_distance.kilometers);
+
+    const hazCount = list.filter(a => a.is_potentially_hazardous_asteroid).length;
+    summary.innerHTML = `<div class="panel" style="margin-bottom:14px;">
+      <strong>${list.length}</strong> asteroids near Earth on ${date} ·
+      <span style="color:#ff8d8d;">${hazCount} potentially hazardous</span></div>`;
+
+    const names = [], sizes = [];
+    let html = "";
+
+    list.forEach(a => {
+      const dia = a.estimated_diameter.meters;
+      const diaFt = a.estimated_diameter.feet;
+      const avg = Math.round((dia.estimated_diameter_min + dia.estimated_diameter_max) / 2);
+      const ca = a.close_approach_data[0];
+      const haz = a.is_potentially_hazardous_asteroid;
+      const sentry = a.is_sentry_object;
+      const name = a.name.replace(/[()]/g, "");
+
+      html += `
+       <div class="ast">
+        <div class="head">
+          <h3>${name}</h3>
+          <div>
+            <span class="tag ${haz ? 'haz' : 'safe'}">${haz ? 'Potentially hazardous' : 'Not hazardous'}</span>
+            ${sentry ? '<span class="tag warn">Sentry object</span>' : ''}
+          </div>
+        </div>
+        <dl>
+          <div><dt>Diameter (est.)</dt><dd>${Math.round(dia.estimated_diameter_min)}–${Math.round(dia.estimated_diameter_max)} m</dd></div>
+          <div><dt>Diameter (feet)</dt><dd>${num(diaFt.estimated_diameter_min)}–${num(diaFt.estimated_diameter_max)} ft</dd></div>
+          <div><dt>Absolute magnitude (H)</dt><dd>${a.absolute_magnitude_h}</dd></div>
+          <div><dt>Closest approach</dt><dd>${ca.close_approach_date_full || ca.close_approach_date}</dd></div>
+          <div><dt>Relative velocity</dt><dd>${num(ca.relative_velocity.kilometers_per_hour)} km/h</dd></div>
+          <div><dt>Velocity (km/s)</dt><dd>${(+ca.relative_velocity.kilometers_per_second).toFixed(1)} km/s</dd></div>
+          <div><dt>Miss distance</dt><dd>${num(ca.miss_distance.kilometers)} km</dd></div>
+          <div><dt>Miss (lunar distances)</dt><dd>${(+ca.miss_distance.lunar).toFixed(1)} LD</dd></div>
+          <div><dt>Miss (astronomical units)</dt><dd>${(+ca.miss_distance.astronomical).toFixed(4)} AU</dd></div>
+          <div><dt>Orbiting body</dt><dd>${ca.orbiting_body}</dd></div>
+          <div><dt>NEO reference ID</dt><dd>${a.neo_reference_id}</dd></div>
+          <div><dt>More info</dt><dd><a href="${a.nasa_jpl_url}" target="_blank">NASA JPL ↗</a></dd></div>
+        </dl>
+       </div>`;
+
+      names.push(name.slice(0, 12)); sizes.push(avg);
+    });
+
+    area.innerHTML = html;
+
+    // size chart
+    chartPanel.style.display = "block";
+    if (astChart) astChart.destroy();
+    astChart = new Chart(document.getElementById("astChart"), {
+      type: "bar",
+      data: { labels: names, datasets: [{ label: "Diameter (m)", data: sizes, backgroundColor: "#9d7bff" }] },
+      options: { responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { display: false },
+          title: { display: true, text: "Bar height = asteroid size (average diameter in meters)", color: "#cfd4dd", font: { size: 13 } } },
+        scales: {
+          x: { ticks: { color: "#98a0ad" }, title: { display: true, text: "Asteroid", color: "#98a0ad" } },
+          y: { ticks: { color: "#98a0ad" }, title: { display: true, text: "Average diameter (m)", color: "#98a0ad" } }
+        } }
+    });
+  }catch(err){
+    area.innerHTML = `<div class="panel"><p class="loading">Couldn't load asteroids. If you've hit the demo-key limit, add your own key on the Home page.</p></div>`;
+  }
+}
+
+const today = new Date().toISOString().slice(0, 10);
+const dateInput = document.getElementById("astDate");
+dateInput.value = today; dateInput.max = today;
+document.getElementById("astGo").addEventListener("click", () => loadAsteroids(dateInput.value));
+loadAsteroids(today);
+</script>
+</body>
+</html>

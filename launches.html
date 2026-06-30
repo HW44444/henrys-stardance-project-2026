@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Stardance — Launches</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<nav>
+  <a class="logo" href="index.html">✦ Henry's Stardance Project</a>
+  <div class="links">
+    <a href="index.html">Home</a>
+    <a href="launches.html">Launches</a>
+    <a href="asteroids.html">Asteroids</a>
+    <a href="image.html">Image of the Day</a>
+  </div>
+</nav>
+
+<main>
+  <section>
+    <h2>🚀 Upcoming rocket launches</h2>
+    <p class="sub">Live data from the Launch Library 2 API — no key required.</p>
+    <div id="launchLoading" class="loading">Loading launches…</div>
+    <div id="launchCards" class="grid cards"></div>
+    <div class="panel" style="margin-top:18px;">
+      <strong style="font-size:14px;">Upcoming launches by provider</strong>
+      <div class="chartwrap"><canvas id="launchChart" role="img" aria-label="Bar chart of upcoming launches grouped by launch provider"></canvas></div>
+    </div>
+  </section>
+</main>
+
+<footer>Built for the Stardance challenge · Data: Launch Library 2</footer>
+
+<script src="stars.js"></script>
+<script src="app.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<script>
+async function loadLaunches(){
+  const loading = document.getElementById("launchLoading");
+  const wrap = document.getElementById("launchCards");
+  try{
+    const res = await fetch("https://ll.thespacedevs.com/2.0.0/launch/upcoming/?limit=9&mode=list");
+    const data = await res.json();
+    loading.style.display = "none";
+
+    const providers = {};
+    data.results.forEach(launch => {
+      const provider = launch.launch_service_provider?.name || "Unknown";
+      const pad = launch.pad?.name || "";
+      const img = launch.image ? `<img src="${launch.image}" alt="">` : "";
+      const card = document.createElement("div");
+      card.className = "card";
+      card.innerHTML = `
+        ${img}
+        <div class="body">
+          <p class="name">${launch.name}</p>
+          <p class="meta">${provider}</p>
+          <p class="meta">${pad}</p>
+          <p class="meta">${prettyDate(launch.net)}</p>
+          <p class="countdown">${countdown(launch.net)}</p>
+        </div>`;
+      wrap.appendChild(card);
+      providers[provider] = (providers[provider] || 0) + 1;
+    });
+
+    new Chart(document.getElementById("launchChart"), {
+      type:"bar",
+      data:{ labels:Object.keys(providers), datasets:[{ label:"Launches", data:Object.values(providers), backgroundColor:"#5b8cff" }] },
+      options:{ responsive:true, maintainAspectRatio:false,
+        plugins:{ legend:{ display:false } },
+        scales:{ x:{ ticks:{ color:"#98a0ad" } }, y:{ ticks:{ color:"#98a0ad", precision:0 } } } }
+    });
+  }catch(err){
+    loading.textContent = "Couldn't load launches (the API may be rate-limited — try again in a minute).";
+  }
+}
+loadLaunches();
+</script>
+</body>
+</html>

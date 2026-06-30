@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Stardance — Home</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<nav>
+  <a class="logo" href="index.html">✦ Henry's Stardance Project</a>
+  <div class="links">
+    <a href="index.html">Home</a>
+    <a href="launches.html">Launches</a>
+    <a href="asteroids.html">Asteroids</a>
+    <a href="image.html">Image of the Day</a>
+  </div>
+</nav>
+
+<header class="hero">
+  <h1>Henry's Stardance Project</h1>
+  <p>A space data explorer — live launches, near-Earth asteroids, and NASA imagery.</p>
+</header>
+
+<main>
+
+  <!-- API KEY -->
+  <section>
+    <div class="panel">
+      <h2 style="font-size:18px;">Your NASA API key (optional)</h2>
+      <p class="sub" style="margin-bottom:12px;">The site already works using a shared demo key. Add your own only if you want higher request limits.</p>
+      <div class="keybar">
+        <input type="text" id="apiKey" placeholder="Paste your NASA API key">
+        <button id="saveKey">Save key</button>
+        <button class="ghost" id="clearKey">Use demo key</button>
+      </div>
+      <p class="status" id="keyStatus"></p>
+      <p class="hint">Get a free key in 1 minute at <a href="https://api.nasa.gov" target="_blank">api.nasa.gov</a>. Your key is stored only in your browser.</p>
+    </div>
+  </section>
+
+  <!-- SECTION LINKS -->
+  <section>
+    <div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(220px,1fr));">
+      <a class="navcard" href="launches.html">
+        <div class="icon">🚀</div>
+        <h3>Launches</h3>
+        <p>Upcoming rocket launches with live countdowns and a chart by provider.</p>
+      </a>
+      <a class="navcard" href="asteroids.html">
+        <div class="icon">☄️</div>
+        <h3>Asteroids</h3>
+        <p>Near-Earth asteroids today — size, speed, distance, and hazard status.</p>
+      </a>
+      <a class="navcard" href="image.html">
+        <div class="icon">🌌</div>
+        <h3>Image of the Day</h3>
+        <p>NASA's Astronomy Picture of the Day, with the full explanation.</p>
+      </a>
+    </div>
+  </section>
+
+</main>
+
+<footer>Built for the Stardance challenge · Data: Launch Library 2 &amp; NASA Open APIs</footer>
+
+<script src="stars.js"></script>
+<script src="app.js"></script>
+<script>
+  const keyInput = document.getElementById("apiKey");
+  const statusEl = document.getElementById("keyStatus");
+
+  function refreshStatus(){
+    if (hasOwnKey()){
+      statusEl.innerHTML = "✅ Using <strong>your saved key</strong>.";
+    } else {
+      statusEl.innerHTML = "Using the shared <code>DEMO_KEY</code> — works right now, just limited requests per hour.";
+    }
+  }
+
+  document.getElementById("saveKey").addEventListener("click", () => {
+    if (saveApiKey(keyInput.value)){ keyInput.value = ""; refreshStatus(); }
+    else alert("Paste a key first.");
+  });
+  document.getElementById("clearKey").addEventListener("click", () => {
+    clearApiKey(); refreshStatus();
+  });
+
+  refreshStatus();
+</script>
+</body>
+</html>
